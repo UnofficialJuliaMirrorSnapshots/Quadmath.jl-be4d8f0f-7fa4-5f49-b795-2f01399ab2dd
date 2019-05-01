@@ -55,7 +55,7 @@ end
     x = parse(Float128, "100.0")
     y = parse(Float128, "25.0")
     @test Float64(x+y) == Float64(BigInt(x) + BigInt(y))
-    @test x+y == Float128(BigInt(x) + BigInt(y))    
+    @test x+y == Float128(BigInt(x) + BigInt(y))
 end
 end
 
@@ -86,22 +86,56 @@ end
     fpart, ipart = modf(y)
     @test y == ipart + fpart
     @test signbit(fpart) == signbit(ipart) == true
-    
+
     z = x^3
     fpart, ipart = modf(x) .+ modf(y)
     @test x+y == ipart+fpart
 end
 
+isnan128(x) = isa(x, Float128) && isnan(x)
+isinf128(x) = isa(x, Float128) && isinf(x)
+
+@testset "nonfinite" begin
+    Zero = Float128(0)
+    One = Float128(1)
+    huge = floatmax(Float128)
+    myinf = huge + huge
+    myminf = -myinf
+    @test isinf128(myinf)
+    @test isnan128(Zero / Zero)
+    @test isinf128(One / Zero)
+    @test isnan128(myinf - myinf)
+    @test isnan128(myinf + myminf)
+    @test Inf128 === myinf
+    @test typemax(Float128) === myinf
+    @test typemin(Float128) === myminf
+end
+
 @testset "transcendental etc. calls" begin
     # at least enough to cover all the wrapping code
-    x = sqrt(Float128(2.0))
-    xd = Float64(x)
-    @test (x^Float128(4.0)) ≈ Float128(4.0)
-    @test exp(x) ≈ exp(xd)
-    @test abs(x) == x
-    @test hypot(Float128(3),Float128(4)) == Float128(5)
-    @test atan(x,x) ≈ Float128(pi) / 4
-    @test fma(x,x,Float128(-1.0)) ≈ Float128(1)
+    @testset "real" begin
+        x = sqrt(Float128(2.0))
+        xd = Float64(x)
+        @test (x^Float128(4.0)) ≈ Float128(4.0)
+        @test exp(x) ≈ exp(xd)
+        @test abs(x) == x
+        @test hypot(Float128(3),Float128(4)) == Float128(5)
+        @test atan(x,x) ≈ Float128(pi) / 4
+        if !Sys.iswindows()
+            @test fma(x,x,Float128(-1.0)) ≈ Float128(1)
+        end
+    end
+    @testset "complex" begin
+        x = sqrt(ComplexF128(1.0 + 1.0im))
+        xd = ComplexF64(x)
+        @test x^x ≈ xd^xd
+        @test exp(x) ≈ exp(xd)
+        @test abs(x) ≈ abs(xd)
+        @test sin(x) ≈ sin(xd)
+        @test cos(x) ≈ cos(xd)
+        @test tan(x) ≈ tan(xd)
+        @test log(x) ≈ log(xd)
+    end
 end
 
 @testset "misc. math" begin
